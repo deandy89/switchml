@@ -1,0 +1,100 @@
+Ini dia PRD Final & Fresh yang sudah sepenuhnya disesuaikan dengan arsitektur Mailgun + Supabase + Vercel. File ini sudah sangat matang dan siap langsung dieksekusi oleh Antigravity tanpa perlu revisi lagi.
+
+Silakan copy seluruh isi blok di bawah ini dan jadikan isi dari file switch.prd milikmu.
+
+PRODUCT REQUIREMENT DOCUMENT (PRD): SWITCH ML MARKETPLACE
+1. Product Overview
+Nama Produk: Switch ML
+
+Visi: Platform jual-beli akun Mobile Legends nomor 1 yang paling aman dengan sistem Zero-Trust Middleman otomatis.
+
+Masalah: Tingginya angka penipuan (scam) akun dan proses middleman manual yang memakan waktu lama untuk serah terima OTP.
+
+Solusi: Sistem Escrow Email Otomatis berbasis Serverless yang menangkap OTP login dari Moonton via Webhook dan meneruskannya ke layar Buyer secara real-time.
+
+2. Target Audience & UI/UX Guidelines
+Target User: Gen Z Gamers (Mobile Legends).
+
+Vibe & Tone: "Cyber-Dawn" – Futuristik, anti-scam, aman, dan super cepat.
+
+Color Palette (Tailwind):
+
+Background: Deep Space Purple (#2D004B) - Wajib Dark Mode.
+
+Primary / Actions: Electric Neon Blue (#00D1FF) dengan efek glow (shadow).
+
+Accents / Warnings: Vivid Magenta (#FF00E5).
+
+Visual Elements:
+
+Glassmorphism: Kartu dan modal menggunakan efek transparan (bg-white/10 backdrop-blur-md border border-white/20).
+
+Live Tracker: Indikator progres transaksi yang menyala.
+
+OTP Glow Box: Kotak angka OTP besar yang muncul dengan animasi (Framer Motion) saat kode berhasil ditangkap.
+
+3. System Architecture & Tech Stack (Full Serverless)
+Framework: Next.js (App Router) dengan TypeScript.
+
+Deployment: Vercel.
+
+Database & Real-time: Supabase (PostgreSQL & Supabase Realtime WebSockets).
+
+Email Inbound (Robot OTP): Mailgun Inbound Routing (menggunakan subdomain khusus, misal: trx@escrow.domain.com).
+
+Styling: Tailwind CSS & Framer Motion.
+
+4. Core Logic: The Automated Escrow Flow
+Checkout: Buyer membayar akun. Sistem membuat alamat email escrow unik untuk transaksi (contoh: trx-12345@escrow.switchml.com).
+
+Account Linking: Seller memasukkan email escrow tersebut ke dalam game ML miliknya.
+
+Webhook Trigger: Email dari Moonton masuk ke Mailgun. Mailgun langsung melakukan POST Request (Inbound Route) memuat data email ke endpoint Vercel kita (/api/webhooks/mailgun).
+
+Data Extraction: Vercel mem-parse request formData dari Mailgun, mengambil field stripped-text atau body-plain, dan mengekstrak 6 digit OTP menggunakan Regex /\d{6}/.
+
+Storage & Broadcast: Vercel menyimpan OTP tersebut ke tabel transactions di Supabase. Supabase Realtime langsung memancarkan event perubahan ini ke browser Buyer.
+
+UI Update: Layar Buyer menampilkan OTP secara otomatis tanpa refresh.
+
+5. Database Schema (Supabase SQL)
+SQL
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  username TEXT UNIQUE NOT NULL,
+  whatsapp_no TEXT UNIQUE NOT NULL,
+  kyc_status BOOLEAN DEFAULT FALSE,
+  balance DECIMAL DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE listings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  seller_id UUID REFERENCES users(id),
+  title TEXT NOT NULL,
+  price DECIMAL NOT NULL,
+  status TEXT DEFAULT 'available',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE transactions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  listing_id UUID REFERENCES listings(id),
+  buyer_id UUID REFERENCES users(id),
+  seller_id UUID REFERENCES users(id),
+  escrow_email TEXT UNIQUE NOT NULL,
+  status TEXT DEFAULT 'waiting_payment',
+  otp_code TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Wajib untuk mengaktifkan WebSockets
+ALTER PUBLICATION supabase_realtime ADD TABLE transactions;
+6. AI Implementation Guide (For Agent)
+Init: Setup Next.js App Router, Tailwind, dan Supabase JS Client (@supabase/supabase-js).
+
+Webhook API: Buat endpoint POST /api/webhooks/mailgun. PENTING: Mailgun mengirim data menggunakan multipart/form-data atau application/x-www-form-urlencoded. Gunakan await request.formData() di Next.js untuk mengekstrak datanya, lalu cari field stripped-text untuk di-regex OTP-nya.
+
+Realtime UI: Buat komponen Client OtpListener.tsx yang menggunakan supabase.channel('custom-all-channel') untuk men-subscribe tabel transactions dan menampilkan OTP secara real-time.

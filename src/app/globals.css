@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Switch ML — "Cyber-Dawn" Design System
+   Tailwind v4: Custom tokens defined in @theme (no tailwind.config.ts)
+   ============================================================ */
+@theme inline {
+  /* Brand Colors */
+  --color-space-purple: #2d004b;
+  --color-neon-blue:    #00d1ff;
+  --color-vivid-magenta:#ff00e5;
+
+  /* Semantic aliases */
+  --color-bg-base:      var(--color-space-purple);
+  --color-primary:      var(--color-neon-blue);
+  --color-accent:       var(--color-vivid-magenta);
+
+  /* Fonts (inherited from layout) */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* ── Global Resets ─────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  min-height: 100%;
+  background-color: #2d004b;
+  color: #e0e0e0;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Neon Glow Utilities ────────────────────────────────────── */
+.neon-glow-blue {
+  text-shadow:
+    0 0 8px #00d1ff,
+    0 0 20px #00d1ff,
+    0 0 40px #00d1ff80;
+  box-shadow:
+    0 0 16px #00d1ff60,
+    0 0 40px #00d1ff30,
+    inset 0 0 16px #00d1ff10;
+}
+
+.neon-glow-magenta {
+  box-shadow:
+    0 0 12px #ff00e560,
+    0 0 30px #ff00e530;
+}
+
+.neon-text-blue {
+  color: #00d1ff;
+  text-shadow:
+    0 0 8px #00d1ff,
+    0 0 24px #00d1ff80;
+}
+
+.neon-text-magenta {
+  color: #ff00e5;
+  text-shadow:
+    0 0 8px #ff00e5,
+    0 0 24px #ff00e580;
+}
+
+/* ── Glassmorphism Base ─────────────────────────────────────── */
+.glass {
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 1rem;
+}
+
+/* ── Ambient background orbs ────────────────────────────────── */
+.bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
