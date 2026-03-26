@@ -1,47 +1,56 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabaseServer';
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    // 1. Keamanan (Validasi Token)
-    const callbackToken = req.headers.get('x-callback-token');
-    const systemToken = process.env.XENDIT_WEBHOOK_TOKEN;
+    // Cara baca header yang benar di Next.js App Router
+    const xenditToken = req.headers.get('x-callback-token');
+    const envToken = process.env.XENDIT_WEBHOOK_TOKEN;
 
-    if (!callbackToken || callbackToken !== systemToken) {
-      console.warn('[Xendit Webhook] Unauthorized - Token mismatch or missing');
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    // --- JURUS DEBUG: Print ke Vercel Logs ---
+    console.log("=== BONGKAR ISI TOKEN XENDIT ===");
+    console.log("1. Token yang dikirim Xendit :", xenditToken);
+    console.log("2. Token yang ada di Vercel  :", envToken);
+    console.log("3. Apakah statusnya sama?    :", xenditToken === envToken);
+    console.log("==================================");
+
+    // Validasi Token
+    if (xenditToken !== envToken) {
+      console.warn("[Xendit Webhook] Unauthorized - Token mismatch");
+      return NextResponse.json({ error: 'Unauthorized webhook' }, { status: 403 });
     }
 
-    // 2. Ekstraksi Data
+    // Ambil body request
     const body = await req.json();
+    console.log("4. Data dari Xendit:", body);
     const { external_id, status } = body;
 
-    console.log(`[Xendit Webhook] Processing for Transaction ID: ${external_id}, Xendit Status: ${status}`);
-
-    // 3. Update Database (Supabase)
-    // Jika nilai status dari Xendit adalah 'PAID' atau 'SETTLED'
+    // --- Logika Update Supabase ---
     if (status === 'PAID' || status === 'SETTLED') {
       const supabase = createServerSupabaseClient();
       
-      const { error } = await supabase
+      console.log(`[Xendit Webhook] Attempting DB update for ${external_id}...`);
+      const { data, error } = await supabase
         .from('transactions')
         .update({ status: 'process' })
-        .eq('id', external_id);
+        .eq('id', external_id)
+        .select();
 
       if (error) {
-        console.error(`[Xendit Webhook] Supabase Update Error for ${external_id}:`, error.message);
-        // Kita tetap lanjut ke return 200 sesuai instruksi user untuk menghentikan retry
+        console.error("Error updating Supabase:", error.message);
+      } else if (!data || data.length === 0) {
+        console.warn(`[Xendit Webhook] No transaction found with ID: ${external_id}`);
       } else {
-        console.log(`[Xendit Webhook] Transaction ${external_id} successfully updated to 'process'`);
+        console.log("Update Success:", data);
       }
+    } else {
+      console.log(`[Xendit Webhook] Status ${status} ignored (not PAID/SETTLED)`);
     }
-
-    // 4. Response 200 OK (Wajib)
+    
     return NextResponse.json({ success: true }, { status: 200 });
 
   } catch (error: any) {
-    console.error('[Xendit Webhook Critical Error]', error.message);
-    // Mengembalikan 200 OK di akhir catch agar Xendit tidak melakukan retry terus-menerus
-    return NextResponse.json({ success: true }, { status: 200 });
+    console.error("Error Webhook:", error);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
