@@ -40,18 +40,10 @@ export async function POST(request: NextRequest) {
 
     // ── 2. Verify Mailgun signature ──────────────────────────────
     const signingKey = process.env.MAILGUN_API_KEY ?? "";
-    const isDev = process.env.NODE_ENV === "development";
-    const isSimulated = form.get("x-simulator") === "true";
-
-    if (isDev && isSimulated) {
-      // Allow simulator requests in dev — skip HMAC check
-      console.log("[mailgun/webhook] ⚠️  Simulator mode — signature check skipped (dev only).");
-    } else {
-      const isValid = verifyMailgunSignature(signingKey, timestamp, token, signature);
-      if (!isValid) {
-        console.warn("[mailgun/webhook] Invalid signature — request rejected.");
-        return new Response("Forbidden: invalid signature", { status: 403 });
-      }
+    const isValid = verifyMailgunSignature(signingKey, timestamp, token, signature);
+    if (!isValid) {
+      console.warn("[mailgun/webhook] Invalid signature — request rejected.");
+      return new Response("Forbidden: invalid signature", { status: 403 });
     }
 
     // ── 3. Extract relevant email fields ─────────────────────────

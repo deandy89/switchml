@@ -18,30 +18,17 @@ export default function SimulatorButton({ escrowEmail }: SimulatorButtonProps) {
     setResult('');
 
     try {
-      // Build a FormData payload that mimics a real Mailgun inbound request
-      const formData = new FormData();
-      formData.append('recipient',     escrowEmail);
-      formData.append('sender',        'noreply@moonton.com');
-      formData.append('subject',       'Mobile Legends Login OTP');
-      formData.append('stripped-text',
-        'Halo Player, ini adalah email resmi dari Moonton. ' +
-        'Kode OTP Anda untuk login adalah 777999. ' +
-        'Jangan berikan kode ini kepada siapapun.'
-      );
-      // Flag to bypass HMAC check in development
-      formData.append('x-simulator', 'true');
-      // Dummy Mailgun signature fields (ignored in dev simulator mode)
-      formData.append('timestamp', String(Math.floor(Date.now() / 1000)));
-      formData.append('token',     'simulator-token');
-      formData.append('signature', 'simulator-signature');
-
-      console.log('[simulator] Mengirim payload ke /api/webhooks/mailgun...', {
+      console.log('[simulator] Mengirim payload ke /api/escrow/simulate-otp...', {
         recipient: escrowEmail,
       });
 
-      const res = await fetch('/api/webhooks/mailgun', {
+      const res = await fetch('/api/escrow/simulate-otp', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          escrow_email: escrowEmail,
+          email_body: 'Halo Player, kode OTP login Anda adalah 777999. Jangan berikan kepada siapapun.'
+        }),
       });
 
       const json = await res.json().catch(() => ({ ok: false, error: res.statusText }));
