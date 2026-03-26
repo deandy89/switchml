@@ -3,42 +3,45 @@ import { createServerSupabaseClient } from '@/lib/supabaseServer';
 
 export async function POST(req: NextRequest) {
   try {
+    // 1. Keamanan (Validasi Token)
+    const callbackToken = req.headers.get('x-callback-token');
+    const systemToken = process.env.XENDIT_WEBHOOK_TOKEN;
+
+    if (!callbackToken || callbackToken !== systemToken) {
+      console.warn('[Xendit Webhook] Unauthorized - Token mismatch or missing');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // 2. Ekstraksi Data
     const body = await req.json();
     const { external_id, status } = body;
 
-    // 1. Validate Webhook Token (Optional but recommended)
-    const xenditWebhookToken = process.env.XENDIT_WEBHOOK_TOKEN;
-    const callbackToken = req.headers.get('x-callback-token');
+    console.log(`[Xendit Webhook] Processing for Transaction ID: ${external_id}, Xendit Status: ${status}`);
 
-    if (xenditWebhookToken && callbackToken !== xenditWebhookToken) {
-      console.warn('[Xendit Webhook] Unauthorized - Invalid token');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    console.log(`[Xendit Webhook] Received for ${external_id} with status ${status}`);
-
-    // status 'PAID' or 'SETTLED' indicates completion
+    // 3. Update Database (Supabase)
+    // Jika nilai status dari Xendit adalah 'PAID' atau 'SETTLED'
     if (status === 'PAID' || status === 'SETTLED') {
       const supabase = createServerSupabaseClient();
       
-      // Update transaction status to transition to the next stage (Seller Bind)
       const { error } = await supabase
         .from('transactions')
-        .update({ status: 'waiting_otp' })
+        .update({ status: 'process' })
         .eq('id', external_id);
 
       if (error) {
-        console.error(`[Xendit Webhook] Error updating transaction ${external_id}:`, error);
-        return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
+        console.error(`[Xendit Webhook] Supabase Update Error for ${external_id}:`, error.message);
+        // Kita tetap lanjut ke return 200 sesuai instruksi user untuk menghentikan retry
+      } else {
+        console.log(`[Xendit Webhook] Transaction ${external_id} successfully updated to 'process'`);
       }
-      
-      console.log(`[Xendit Webhook] Transaction ${external_id} marked as PAID`);
     }
 
-    return NextResponse.json({ message: 'Webhook received' });
+    // 4. Response 200 OK (Wajib)
+    return NextResponse.json({ success: true }, { status: 200 });
 
   } catch (error: any) {
-    console.error('[Xendit Webhook Error]', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error('[Xendit Webhook Critical Error]', error.message);
+    // Mengembalikan 200 OK di akhir catch agar Xendit tidak melakukan retry terus-menerus
+    return NextResponse.json({ success: true }, { status: 200 });
   }
 }
