@@ -1,6 +1,5 @@
 import OtpListener from '@/components/OtpListener';
 import PaymentButton from '@/components/PaymentButton';
-import SimulatorButton from '@/components/SimulatorButton';
 import { createServerSupabaseClient } from '@/lib/supabaseServer';
 import { createClient } from '@/utils/supabase/server';
 import type { Transaction } from '@/lib/types';
@@ -196,8 +195,6 @@ export default async function EscrowPage({
           </div>
         )}
 
-        {/* Simulator */}
-        <SimulatorButton escrowEmail={transaction.escrow_email} />
       </div>
     </main>
   );
