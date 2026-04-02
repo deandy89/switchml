@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Generate Escrow Email
-    const domain = process.env.MAILGUN_DOMAIN || "escrow.switchml.com";
+    const domain = process.env.ESCROW_DOMAIN || "escrow.switchml.com";
     const escrowEmail = `trx-${crypto.randomUUID().slice(0, 8)}@${domain}`;
 
     // 4. Create Transaction & Update Listing Status

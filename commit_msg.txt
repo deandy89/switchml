@@ -1,1 +1,0 @@
-🚀 Fix: Redirect OTP Simulator to dedicated internal endpoint to bypass 403 Forbidden in production.
