@@ -48,11 +48,13 @@ export async function POST(req: Request) {
       body?.html ||
       "";
 
+    // headers.to can be a mailparser Address object { text, value: [{address}] }
+    // — extract the plain string safely before any string operations.
+    const rawTo = body?.headers?.to ?? body?.to ?? body?.recipient ?? "";
     const recipient: string =
-      body?.headers?.to ||
-      body?.to ||
-      body?.recipient ||
-      "";
+      typeof rawTo === "string"
+        ? rawTo
+        : (rawTo?.text ?? rawTo?.value?.[0]?.address ?? "");
 
     const sender: string =
       body?.headers?.from ||
