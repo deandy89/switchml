@@ -10,6 +10,7 @@ interface OtpListenerProps {
   transactionId?: string;
   viewerRole?: string;
   initialStatus?: string;
+  initialOtp?: string | null;
 }
 
 // ── OTP digit card ──────────────────────────────────────────────
@@ -68,8 +69,8 @@ function PulsingRing() {
 }
 
 // ── Main Component ──────────────────────────────────────────────
-export default function OtpListener({ transactionId, viewerRole, initialStatus }: OtpListenerProps) {
-  const [otpCode, setOtpCode]   = useState<string | null>(null);
+export default function OtpListener({ transactionId, viewerRole, initialStatus, initialOtp }: OtpListenerProps) {
+  const [otpCode, setOtpCode]   = useState<string | null>(initialOtp ?? null);
   const [status, setStatus]     = useState<string>(initialStatus || 'waiting_otp');
   const [connected, setConnected] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -132,6 +133,54 @@ export default function OtpListener({ transactionId, viewerRole, initialStatus }
     setIsSubmitting(false);
   };
 
+  // ── Polling fallback: fetch every 3 s until OTP is found or terminal ──
+  useEffect(() => {
+    if (!transactionId) return;
+
+    const TERMINAL = new Set(['completed', 'cancelled']);
+
+    const poll = async () => {
+      const client = createClient();
+      const { data, error } = await client
+        .from('transactions')
+        .select('otp_code, status')
+        .eq('id', transactionId)
+        .single();
+
+      if (error || !data) return;
+
+      console.log('[OtpListener] Poll result →', { otp_code: data.otp_code, status: data.status });
+
+      if (data.otp_code) setOtpCode(data.otp_code as string);
+      if (data.status)   setStatus(data.status as string);
+    };
+
+    // Run once immediately on mount so existing OTP is shown right away
+    poll();
+
+    const intervalId = setInterval(() => {
+      setStatus(current => {
+        if (TERMINAL.has(current)) {
+          clearInterval(intervalId);
+          return current;
+        }
+        return current;
+      });
+      setOtpCode(current => {
+        if (current) {
+          clearInterval(intervalId);
+          return current;
+        }
+        // Fire async poll outside of state updater
+        poll();
+        return current;
+      });
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [transactionId]);
+
+  // ── Supabase Realtime (primary, fast-path) ────────────────────
   useEffect(() => {
     console.log('Menyiapkan koneksi Realtime...');
 

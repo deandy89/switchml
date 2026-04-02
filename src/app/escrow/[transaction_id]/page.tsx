@@ -183,7 +183,7 @@ export default async function EscrowPage({
         </div>
 
         {/* OTP Listener */}
-        <OtpListener transactionId={transaction.id} viewerRole={viewerRole} initialStatus={transaction.status} />
+        <OtpListener transactionId={transaction.id} viewerRole={viewerRole} initialStatus={transaction.status} initialOtp={transaction.otp_code} />
 
         {/* Payment Button for Buyer */}
         {transaction.status === 'waiting_payment' && viewerRole === 'buyer' && (
